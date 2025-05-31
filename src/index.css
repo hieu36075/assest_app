@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* .swiper,
+.swiper-wrapper {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.swiper-slide {
+  overflow: visible !important;
+  position: relative !important;
+} */
+
+@theme {
+  --color-light-blue: #f8f9fd;
+  --animate-wave: wave 20s linear infinite;
+  @keyframes wave {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+}
