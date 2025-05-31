@@ -289,20 +289,3 @@ const SmoothWaveAudio = ({
 
 export const MemoSmoothWaveAudio = memo(SmoothWaveAudio);
 
-const array1 = [3, 7,2,6];
-
-const test = (arr: number[]) => {
-  let maxValue: number = 0;
-
-  for (let i = 0; i <= arr.length - 1; i++) {
-    for (let j = 1; j <= arr.length - 1; j++) {
-      if (i === j) continue;
-      if ((arr[i] - 1) * (arr[j] - 1) > maxValue) {
-        maxValue = (arr[i] - 1) * (arr[j] - 1);
-      }
-    }
-  }
-  return maxValue;
-};
-
-console.log(test(array1));
