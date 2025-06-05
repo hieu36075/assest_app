@@ -79,7 +79,7 @@ function HomePage() {
   const isMobile = useIsMobile();
   const BGURL =
     "https://calista.com.tr/media/532bmoz2/spa-nedir.jpg?rmode=max&width=500&height=265";
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [activeItem, setActiveItem] = useState<CharacterItem | null>(null);
   const [modalOrigin, setModalOrigin] = useState<{ x: number; y: number }>({

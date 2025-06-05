@@ -45,7 +45,7 @@ export default function CharacterCarouselMobile({
 
       const transformStr = `
       perspective(800px)
-      translateZ(${translateZ}px)
+      translateZ(${translateZ.toFixed(2)}px)
        scale(${scale})
     `;
 
@@ -85,8 +85,8 @@ export default function CharacterCarouselMobile({
         centeredSlidesBounds={type === "normal"}
         grabCursor
         loop={type === "normal"}
-        freeMode={type === "infinity"} 
-        slideToClickedSlide={type === "normal"} 
+        freeMode={type === "infinity"}
+        slideToClickedSlide={type === "normal"}
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
           handleTransform();

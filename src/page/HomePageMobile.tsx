@@ -62,6 +62,9 @@ const HomePageMobile = () => {
   const [isTry, setIsTry] = useState(false);
   const [isTrading, setIsTrading] = useState(false);
   const controls = useAnimationControls();
+  const [typeCarousel, setTypeCarousel] = useState<"normal" | "infinity">(
+    "normal"
+  );
   useEffect(() => {
     let startTime: number | null = null;
     let frameId: number;
@@ -135,7 +138,16 @@ const HomePageMobile = () => {
         <div className="flex gap-6 w-full justify-center my-5">
           <button
             className="px-3 py-1 rounded-full uppercase font-semibold text-base shadow-md cursor-pointer hover:opacity-60"
-            onClick={() => setIsTry(!isTry)}
+            onClick={() => {
+              setIsTry(!isTry);
+              setTimeout(() => {
+                if (typeCarousel === "normal") {
+                  setTypeCarousel("infinity");
+                } else {
+                  setTypeCarousel("normal");
+                }
+              }, 100);
+            }}
           >
             Let's try
           </button>
@@ -148,7 +160,7 @@ const HomePageMobile = () => {
         </div>
 
         <div className="h-auto mb-6">
-          <CharacterCarouselMobile type="infinity" data={data} />
+          <CharacterCarouselMobile type={typeCarousel} data={data} />
         </div>
         <div className="flex gap-4 px-4 ">
           <div className="h-32 w-16 overflow-hidden rounded-full">
@@ -288,4 +300,3 @@ const SmoothWaveAudio = ({
 };
 
 export const MemoSmoothWaveAudio = memo(SmoothWaveAudio);
-
