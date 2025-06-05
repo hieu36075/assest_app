@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Monitor {
   id: number;
@@ -13,12 +13,29 @@ function App() {
   const [monitors, setMonitors] = useState<Monitor[]>([
     { id: 1, x: 200, y: 150, isMain: true, width: 192, height: 108 },
     { id: 2, x: 390, y: 150, isMain: false, width: 144, height: 96 },
-    // { id: 3, x: 50, y: 150, isMain: false, width: 144, height: 96 },
   ]);
 
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [monitorId, setMonitorId] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+
+  // Get actual size of frame
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setFrameSize({ width, height });
+      }
+    };
+
+    updateSize();
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent, id: number) => {
     const monitor = monitors.find((m) => m.id === id);
@@ -43,10 +60,12 @@ function App() {
     dragged: Monitor,
     others: Monitor[]
   ): { x: number; y: number } => {
-    let closestSnap = { x: dragged.x, y: dragged.y };
-    let minDistance = Infinity;
+    let best = { x: dragged.x, y: dragged.y };
+    let minDist = Infinity;
+    let snappedDir: "top" | "bottom" | "left" | "right" | null = null;
+    let closestMonitor: Monitor | null = null;
 
-    others.forEach((fixed) => {
+    for (const fixed of others) {
       const directions = {
         top: {
           x: Math.max(
@@ -54,7 +73,7 @@ function App() {
             Math.min(dragged.x, fixed.x + fixed.width - 20)
           ),
           y: fixed.y - dragged.height,
-          distance: Math.abs(dragged.y + dragged.height - fixed.y),
+          dist: Math.abs(dragged.y + dragged.height - fixed.y),
         },
         bottom: {
           x: Math.max(
@@ -62,7 +81,7 @@ function App() {
             Math.min(dragged.x, fixed.x + fixed.width - 20)
           ),
           y: fixed.y + fixed.height,
-          distance: Math.abs(dragged.y - (fixed.y + fixed.height)),
+          dist: Math.abs(dragged.y - (fixed.y + fixed.height)),
         },
         left: {
           x: fixed.x - dragged.width,
@@ -70,7 +89,7 @@ function App() {
             fixed.y - dragged.height + 20,
             Math.min(dragged.y, fixed.y + fixed.height - 20)
           ),
-          distance: Math.abs(dragged.x + dragged.width - fixed.x),
+          dist: Math.abs(dragged.x + dragged.width - fixed.x),
         },
         right: {
           x: fixed.x + fixed.width,
@@ -78,20 +97,130 @@ function App() {
             fixed.y - dragged.height + 20,
             Math.min(dragged.y, fixed.y + fixed.height - 20)
           ),
-          distance: Math.abs(dragged.x - (fixed.x + fixed.width)),
+          dist: Math.abs(dragged.x - (fixed.x + fixed.width)),
         },
       };
 
-      for (const dir in directions) {
-        const { x, y, distance } = directions[dir as keyof typeof directions];
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestSnap = { x, y };
+      for (const dir of Object.keys(directions) as Array<
+        keyof typeof directions
+      >) {
+        const { x, y, dist } = directions[dir];
+        if (dist < minDist) {
+          minDist = dist;
+          best = { x, y };
+          closestMonitor = fixed;
+          snappedDir = dir;
         }
       }
-    });
+    }
 
-    return closestSnap;
+    const isOverflow = (pos: { x: number; y: number }) =>
+      pos.x < 0 ||
+      pos.y < 0 ||
+      pos.x + dragged.width > frameSize.width ||
+      pos.y + dragged.height > frameSize.height;
+
+    if (closestMonitor && snappedDir && isOverflow(best)) {
+      let oppositePos: { x: number; y: number } | null = null;
+
+      switch (snappedDir) {
+        case "top":
+          oppositePos = {
+            x: closestMonitor.x + (closestMonitor.width - dragged.width) / 2,
+            y: closestMonitor.y + closestMonitor.height,
+          };
+          break;
+        case "bottom":
+          oppositePos = {
+            x: closestMonitor.x + (closestMonitor.width - dragged.width) / 2,
+            y: closestMonitor.y - dragged.height,
+          };
+          break;
+        case "left":
+          oppositePos = {
+            x: closestMonitor.x + closestMonitor.width,
+            y: closestMonitor.y + (closestMonitor.height - dragged.height) / 2,
+          };
+          break;
+        case "right":
+          oppositePos = {
+            x: closestMonitor.x - dragged.width,
+            y: closestMonitor.y + (closestMonitor.height - dragged.height) / 2,
+          };
+          break;
+      }
+
+      if (oppositePos && !isOverflow(oppositePos)) {
+        best = oppositePos;
+      } else {
+        const tryDirections: Array<"top" | "bottom" | "left" | "right"> = [
+          "top",
+          "bottom",
+          "left",
+          "right",
+        ];
+
+        for (const dir of tryDirections) {
+          if (dir === snappedDir) continue;
+          if (oppositePos) {
+            const oppDir =
+              snappedDir === "top"
+                ? "bottom"
+                : snappedDir === "bottom"
+                ? "top"
+                : snappedDir === "left"
+                ? "right"
+                : "left";
+            if (dir === oppDir) continue;
+          }
+
+          let posCandidate: { x: number; y: number } | null = null;
+
+          switch (dir) {
+            case "top":
+              posCandidate = {
+                x:
+                  closestMonitor.x + (closestMonitor.width - dragged.width) / 2,
+                y: closestMonitor.y - dragged.height,
+              };
+              break;
+            case "bottom":
+              posCandidate = {
+                x:
+                  closestMonitor.x + (closestMonitor.width - dragged.width) / 2,
+                y: closestMonitor.y + closestMonitor.height,
+              };
+              break;
+            case "left":
+              posCandidate = {
+                x: closestMonitor.x - dragged.width,
+                y:
+                  closestMonitor.y +
+                  (closestMonitor.height - dragged.height) / 2,
+              };
+              break;
+            case "right":
+              posCandidate = {
+                x: closestMonitor.x + closestMonitor.width,
+                y:
+                  closestMonitor.y +
+                  (closestMonitor.height - dragged.height) / 2,
+              };
+              break;
+          }
+
+          if (posCandidate && !isOverflow(posCandidate)) {
+            best = posCandidate;
+            break;
+          }
+        }
+      }
+    }
+
+    best.x = Math.max(0, Math.min(best.x, frameSize.width - dragged.width));
+    best.y = Math.max(0, Math.min(best.y, frameSize.height - dragged.height));
+
+    return best;
   };
 
   const handleMouseUp = () => {
@@ -129,6 +258,7 @@ function App() {
       </p>
 
       <div
+        ref={containerRef}
         className="relative w-full h-96 border border-gray-400 bg-gray-100 rounded overflow-hidden"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
